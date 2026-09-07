@@ -77,6 +77,15 @@ test("scrolled list: header collapses and dismisses without scrolling the list",
     150,
   );
   if (patched) {
+    await swipe(page, ".title", -270);
+    await expect(page.getByTestId("status")).toContainText("Expanded");
+    await settled(page);
+    expect(await page.locator(".content").evaluate((el) => el.scrollTop)).toBe(
+      150,
+    );
+    await swipe(page, ".title", 300);
+    await expect(page.getByTestId("status")).toContainText("Compact");
+    await settled(page);
     await swipe(page, ".chrome", 310);
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByTestId("status")).toContainText("Closed");
