@@ -78,3 +78,28 @@ StackBlitz uses the startup configuration from
 Its automatic dependency installer is disabled because it can invoke Yarn 1,
 which does not support this `patch:` setup. The startup script invokes the
 committed Yarn 4.6.0 release directly, then starts Vite after successful linking.
+
+## Browser verification
+
+The same five Playwright scenarios check each branch in an isolated Google Chrome
+process with a 390 × 844 mobile viewport and touch input. Chrome must be installed.
+The test sends a sequence of native touch events with small intermediate moves;
+a single large move is insufficient because Base UI absorbs the first move.
+
+With the dev server running:
+
+```sh
+# reproduction branch
+node .yarn/releases/yarn-4.6.0.cjs test
+
+# fixed branch
+EXPECT_PATCHED=1 node .yarn/releases/yarn-4.6.0.cjs test
+
+# A different dev server port
+DEMO_URL=http://localhost:63101 EXPECT_PATCHED=1 node .yarn/releases/yarn-4.6.0.cjs test
+```
+
+The unpatched assertions intentionally verify the blocked header gestures;
+the patched assertions verify expansion, collapse and dismissal. Both versions
+also verify native list scrolling, the glass effect, a one-address list, buttons,
+and suppression of an Add click after dragging.

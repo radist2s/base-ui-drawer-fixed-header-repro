@@ -2,3 +2,5 @@ node_modules/
 dist/
 .vite/
 .yarn/install-state.gz
+test-results/
+playwright-report/
