@@ -157,6 +157,7 @@ function App() {
                   <div className="headerInner">
                     <div className="chrome">
                       <div className="handle" />
+                      <span className="dragHint">↕ Drag this header</span>
                     </div>
                     <div className="headerRow">
                       <Drawer.Close className="back" aria-label="Back">
