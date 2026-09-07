@@ -1,0 +1,198 @@
+diff --git a/drawer/viewport/DrawerViewport.js b/drawer/viewport/DrawerViewport.js
+index 52347967fdaa05908fea191887e5e96d0be56012..d5599ddfe292fc85b92104f58cc6719e3ec3d91a 100644
+--- a/drawer/viewport/DrawerViewport.js
++++ b/drawer/viewport/DrawerViewport.js
+@@ -725,8 +725,8 @@ const DrawerViewport = exports.DrawerViewport = /*#__PURE__*/React.forwardRef(fu
+           return;
+         }
+         ignoreTouchSwipeRef.current = false;
+-        const scrollTarget = (0, _scrollable.findScrollableTouchTarget)(target, rootElement, scrollAxis);
+-        const hasCrossAxisScrollableContent = (0, _scrollable.findScrollableTouchTarget)(target, rootElement, crossScrollAxis) != null;
++        const scrollTarget = (0, _scrollable.findScrollableTouchTarget)(target, rootElement, scrollAxis, false, true);
++        const hasCrossAxisScrollableContent = (0, _scrollable.findScrollableTouchTarget)(target, rootElement, crossScrollAxis, false, true) != null;
+         let allowSwipe = null;
+         if (scrollTarget) {
+           const canSwipeFromEdge = isAtSwipeStartEdge(scrollTarget, scrollAxis, swipeDirection);
+diff --git a/drawer/viewport/DrawerViewport.mjs b/drawer/viewport/DrawerViewport.mjs
+index ea0274bb1ddc41e32466dea25889dd05b2d2b02d..524fd102d38341e66d11802af720c64dfe5b51f7 100644
+--- a/drawer/viewport/DrawerViewport.mjs
++++ b/drawer/viewport/DrawerViewport.mjs
+@@ -719,8 +719,8 @@ export const DrawerViewport = /*#__PURE__*/React.forwardRef(function DrawerViewp
+           return;
+         }
+         ignoreTouchSwipeRef.current = false;
+-        const scrollTarget = findScrollableTouchTarget(target, rootElement, scrollAxis);
+-        const hasCrossAxisScrollableContent = findScrollableTouchTarget(target, rootElement, crossScrollAxis) != null;
++        const scrollTarget = findScrollableTouchTarget(target, rootElement, scrollAxis, false, true);
++        const hasCrossAxisScrollableContent = findScrollableTouchTarget(target, rootElement, crossScrollAxis, false, true) != null;
+         let allowSwipe = null;
+         if (scrollTarget) {
+           const canSwipeFromEdge = isAtSwipeStartEdge(scrollTarget, scrollAxis, swipeDirection);
+diff --git a/utils/scrollable.d.mts b/utils/scrollable.d.mts
+index f139049d2acab2b8d1038bc11a04900b169f7a19..5695984dc5fcea3d693eba32d0ddd8f96bf22aba 100644
+--- a/utils/scrollable.d.mts
++++ b/utils/scrollable.d.mts
+@@ -2,5 +2,5 @@ export type ScrollAxis = 'horizontal' | 'vertical';
+ export declare function isScrollableY(element: HTMLElement, allowOverflowIntent?: boolean): boolean;
+ export declare function isScrollableX(element: HTMLElement, allowOverflowIntent?: boolean): boolean;
+ export declare function isScrollable(element: HTMLElement, axis: ScrollAxis, allowOverflowIntent?: boolean): boolean;
+-export declare function hasScrollableAncestor(target: HTMLElement, root: HTMLElement, axes: ScrollAxis[]): boolean;
+-export declare function findScrollableTouchTarget(target: EventTarget | null, root: HTMLElement, axis?: ScrollAxis, allowOverflowIntent?: boolean): HTMLElement | null;
+\ No newline at end of file
++export declare function hasScrollableAncestor(target: HTMLElement, root: HTMLElement, axes: ScrollAxis[], stopAtFixed?: boolean): boolean;
++export declare function findScrollableTouchTarget(target: EventTarget | null, root: HTMLElement, axis?: ScrollAxis, allowOverflowIntent?: boolean, stopAtFixed?: boolean): HTMLElement | null;
+\ No newline at end of file
+diff --git a/utils/scrollable.d.ts b/utils/scrollable.d.ts
+index f139049d2acab2b8d1038bc11a04900b169f7a19..5695984dc5fcea3d693eba32d0ddd8f96bf22aba 100644
+--- a/utils/scrollable.d.ts
++++ b/utils/scrollable.d.ts
+@@ -2,5 +2,5 @@ export type ScrollAxis = 'horizontal' | 'vertical';
+ export declare function isScrollableY(element: HTMLElement, allowOverflowIntent?: boolean): boolean;
+ export declare function isScrollableX(element: HTMLElement, allowOverflowIntent?: boolean): boolean;
+ export declare function isScrollable(element: HTMLElement, axis: ScrollAxis, allowOverflowIntent?: boolean): boolean;
+-export declare function hasScrollableAncestor(target: HTMLElement, root: HTMLElement, axes: ScrollAxis[]): boolean;
+-export declare function findScrollableTouchTarget(target: EventTarget | null, root: HTMLElement, axis?: ScrollAxis, allowOverflowIntent?: boolean): HTMLElement | null;
+\ No newline at end of file
++export declare function hasScrollableAncestor(target: HTMLElement, root: HTMLElement, axes: ScrollAxis[], stopAtFixed?: boolean): boolean;
++export declare function findScrollableTouchTarget(target: EventTarget | null, root: HTMLElement, axis?: ScrollAxis, allowOverflowIntent?: boolean, stopAtFixed?: boolean): HTMLElement | null;
+\ No newline at end of file
+diff --git a/utils/scrollable.js b/utils/scrollable.js
+index c03e693a05ad5294e5d42a37331f1b29ead9fbd4..27d5c7fa45542caa148ea6a8f2563db914a3f1e1 100644
+--- a/utils/scrollable.js
++++ b/utils/scrollable.js
+@@ -33,7 +33,7 @@ function isScrollableX(element, allowOverflowIntent = false) {
+ function isScrollable(element, axis, allowOverflowIntent = false) {
+   return axis === 'vertical' ? isScrollableY(element, allowOverflowIntent) : isScrollableX(element, allowOverflowIntent);
+ }
+-function hasScrollableAncestor(target, root, axes) {
++function hasScrollableAncestor(target, root, axes, stopAtFixed = false) {
+   // `getParentNode` crosses shadow boundaries (and slots), so a target inside a shadow root
+   // still walks up to scrollable ancestors in the light DOM.
+   let node = target;
+@@ -43,11 +43,15 @@ function hasScrollableAncestor(target, root, axes) {
+         return true;
+       }
+     }
++    // Fixed drawer chrome does not participate in its ancestors' scroll area.
++    if (stopAtFixed && (0, _dom.getComputedStyle)(node).position === 'fixed') {
++      return false;
++    }
+     node = (0, _dom.getParentNode)(node);
+   }
+   return false;
+ }
+-function findScrollableTouchTarget(target, root, axis = 'vertical', allowOverflowIntent = false) {
++function findScrollableTouchTarget(target, root, axis = 'vertical', allowOverflowIntent = false, stopAtFixed = false) {
+   // `getParentNode` crosses shadow boundaries (and slots), so a target inside a shadow root
+   // still reaches a scrollable ancestor in the light DOM.
+   let node = (0, _dom.isHTMLElement)(target) ? target : null;
+@@ -55,6 +59,10 @@ function findScrollableTouchTarget(target, root, axis = 'vertical', allowOverflo
+     if (isScrollable(node, axis, allowOverflowIntent)) {
+       return node;
+     }
++    // Keep scrollable descendants active before stopping at fixed drawer chrome.
++    if (stopAtFixed && (0, _dom.getComputedStyle)(node).position === 'fixed') {
++      return null;
++    }
+     node = (0, _dom.getParentNode)(node);
+   }
+   return isScrollable(root, axis, allowOverflowIntent) ? root : null;
+diff --git a/utils/scrollable.mjs b/utils/scrollable.mjs
+index 7b94b5f4352bf9c85662152a904f4cec5c17e719..b452faad2f0ce52ddc136fc25623bbfb8b28c3d7 100644
+--- a/utils/scrollable.mjs
++++ b/utils/scrollable.mjs
+@@ -23,7 +23,7 @@ export function isScrollableX(element, allowOverflowIntent = false) {
+ export function isScrollable(element, axis, allowOverflowIntent = false) {
+   return axis === 'vertical' ? isScrollableY(element, allowOverflowIntent) : isScrollableX(element, allowOverflowIntent);
+ }
+-export function hasScrollableAncestor(target, root, axes) {
++export function hasScrollableAncestor(target, root, axes, stopAtFixed = false) {
+   // `getParentNode` crosses shadow boundaries (and slots), so a target inside a shadow root
+   // still walks up to scrollable ancestors in the light DOM.
+   let node = target;
+@@ -33,11 +33,15 @@ export function hasScrollableAncestor(target, root, axes) {
+         return true;
+       }
+     }
++    // Fixed drawer chrome does not participate in its ancestors' scroll area.
++    if (stopAtFixed && getComputedStyle(node).position === 'fixed') {
++      return false;
++    }
+     node = getParentNode(node);
+   }
+   return false;
+ }
+-export function findScrollableTouchTarget(target, root, axis = 'vertical', allowOverflowIntent = false) {
++export function findScrollableTouchTarget(target, root, axis = 'vertical', allowOverflowIntent = false, stopAtFixed = false) {
+   // `getParentNode` crosses shadow boundaries (and slots), so a target inside a shadow root
+   // still reaches a scrollable ancestor in the light DOM.
+   let node = isHTMLElement(target) ? target : null;
+@@ -45,6 +49,10 @@ export function findScrollableTouchTarget(target, root, axis = 'vertical', allow
+     if (isScrollable(node, axis, allowOverflowIntent)) {
+       return node;
+     }
++    // Keep scrollable descendants active before stopping at fixed drawer chrome.
++    if (stopAtFixed && getComputedStyle(node).position === 'fixed') {
++      return null;
++    }
+     node = getParentNode(node);
+   }
+   return isScrollable(root, axis, allowOverflowIntent) ? root : null;
+diff --git a/utils/useSwipeDismiss.js b/utils/useSwipeDismiss.js
+index 8ec38fb66076073685a3316492c0e977a9873462..f34d6e3cdfe9f12a79196000eaf78a5e21ebddf1 100644
+--- a/utils/useSwipeDismiss.js
++++ b/utils/useSwipeDismiss.js
+@@ -305,12 +305,12 @@ function useSwipeDismiss(options) {
+   }
+   function findGestureScrollableTouchTarget(target, root) {
+     if (hasHorizontal && !hasVertical) {
+-      return (0, _scrollable.findScrollableTouchTarget)(target, root, 'horizontal');
++      return (0, _scrollable.findScrollableTouchTarget)(target, root, 'horizontal', false, ignoreScrollableAncestors);
+     }
+     if (hasVertical && !hasHorizontal) {
+-      return (0, _scrollable.findScrollableTouchTarget)(target, root, 'vertical');
++      return (0, _scrollable.findScrollableTouchTarget)(target, root, 'vertical', false, ignoreScrollableAncestors);
+     }
+-    return (0, _scrollable.findScrollableTouchTarget)(target, root, 'vertical') ?? (0, _scrollable.findScrollableTouchTarget)(target, root, 'horizontal');
++    return (0, _scrollable.findScrollableTouchTarget)(target, root, 'vertical', false, ignoreScrollableAncestors) ?? (0, _scrollable.findScrollableTouchTarget)(target, root, 'horizontal', false, ignoreScrollableAncestors);
+   }
+   function startSwipeAtPosition(event, position, startOptions) {
+     swipeFromScrollableRef.current = false;
+@@ -331,7 +331,7 @@ function useSwipeDismiss(options) {
+     const element = elementRef.current;
+     if (ignoreScrollableAncestors && element && target && scrollAxes.length > 0) {
+       const ignoreAncestors = startOptions?.ignoreScrollableAncestors ?? false;
+-      if (!ignoreAncestors && (0, _scrollable.hasScrollableAncestor)(target, element, scrollAxes)) {
++      if (!ignoreAncestors && (0, _scrollable.hasScrollableAncestor)(target, element, scrollAxes, ignoreScrollableAncestors)) {
+         return false;
+       }
+     }
+diff --git a/utils/useSwipeDismiss.mjs b/utils/useSwipeDismiss.mjs
+index 89e5d5a6c79dd1b7c2685cd3bfe6cf47499eb8f1..8c7731fabd731049c430fd98e3fd165ce515cdeb 100644
+--- a/utils/useSwipeDismiss.mjs
++++ b/utils/useSwipeDismiss.mjs
+@@ -298,12 +298,12 @@ export function useSwipeDismiss(options) {
+   }
+   function findGestureScrollableTouchTarget(target, root) {
+     if (hasHorizontal && !hasVertical) {
+-      return findScrollableTouchTarget(target, root, 'horizontal');
++      return findScrollableTouchTarget(target, root, 'horizontal', false, ignoreScrollableAncestors);
+     }
+     if (hasVertical && !hasHorizontal) {
+-      return findScrollableTouchTarget(target, root, 'vertical');
++      return findScrollableTouchTarget(target, root, 'vertical', false, ignoreScrollableAncestors);
+     }
+-    return findScrollableTouchTarget(target, root, 'vertical') ?? findScrollableTouchTarget(target, root, 'horizontal');
++    return findScrollableTouchTarget(target, root, 'vertical', false, ignoreScrollableAncestors) ?? findScrollableTouchTarget(target, root, 'horizontal', false, ignoreScrollableAncestors);
+   }
+   function startSwipeAtPosition(event, position, startOptions) {
+     swipeFromScrollableRef.current = false;
+@@ -324,7 +324,7 @@ export function useSwipeDismiss(options) {
+     const element = elementRef.current;
+     if (ignoreScrollableAncestors && element && target && scrollAxes.length > 0) {
+       const ignoreAncestors = startOptions?.ignoreScrollableAncestors ?? false;
+-      if (!ignoreAncestors && hasScrollableAncestor(target, element, scrollAxes)) {
++      if (!ignoreAncestors && hasScrollableAncestor(target, element, scrollAxes, ignoreScrollableAncestors)) {
+         return false;
+       }
+     }
