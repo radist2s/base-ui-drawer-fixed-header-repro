@@ -1,0 +1,321 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #222;
+  background: #f6f5f3;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+  border: 1px solid #d8d8d8;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 14px;
+}
+button:hover {
+  background: #f0f0f0;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #7964b3;
+  outline-offset: 3px;
+}
+.page {
+  padding: 24px 20px 55dvh;
+}
+.instructions {
+  max-width: 760px;
+  margin: auto;
+}
+h1 {
+  font-size: 28px;
+  letter-spacing: -0.8px;
+  margin: 8px 0;
+}
+p {
+  color: #666;
+  line-height: 1.5;
+}
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #777;
+}
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.toolbar label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+select {
+  padding: 8px;
+  border: 1px solid #d8d8d8;
+  border-radius: 8px;
+  background: white;
+}
+.status {
+  display: block;
+  margin: 12px 0;
+  font-size: 13px;
+  color: #65557e;
+}
+details {
+  font-size: 13px;
+  color: #777;
+}
+summary {
+  cursor: pointer;
+}
+details ol {
+  padding-left: 20px;
+}
+.events {
+  font-family: monospace;
+}
+.backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: #0001;
+  opacity: calc(1 - var(--drawer-swipe-progress));
+  transition: opacity 300ms;
+}
+.viewport {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+.popup {
+  --header-height: 85px;
+  --footer-height: 78px;
+  --visible-height: calc(
+    88dvh - var(--drawer-snap-point-offset, 0px) -
+      var(--drawer-swipe-movement-y, 0px)
+  );
+  width: min(430px, 100%);
+  height: 88dvh;
+  position: relative;
+  pointer-events: auto;
+  background: white;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -5px 30px #0001;
+  outline: none;
+  transform: translateY(
+    calc(
+      var(--drawer-snap-point-offset, 0px) + var(--drawer-swipe-movement-y, 0px)
+    )
+  );
+  transition: transform 350ms cubic-bezier(0.22, 0.8, 0.2, 1);
+}
+.popup[data-starting-style],
+.popup[data-ending-style] {
+  transform: translateY(100%);
+}
+.popup[data-swiping] {
+  transition: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.content {
+  height: max(0px, calc(var(--visible-height) - var(--footer-height)));
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scroll-timeline: --addresses block;
+  padding: var(--header-height) 20px 12px;
+  border-radius: 18px 18px 0 0;
+  transition: height 350ms cubic-bezier(0.22, 0.8, 0.2, 1);
+}
+.popup[data-swiping] .content {
+  transition: none;
+}
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  z-index: 2;
+  border-radius: 18px 18px 0 0;
+  touch-action: none;
+}
+.header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    120deg,
+    rgb(228 233 255 / 82%),
+    rgb(244 230 255 / 72%)
+  );
+  backdrop-filter: blur(18px) saturate(1.8);
+  -webkit-backdrop-filter: blur(18px) saturate(1.8);
+  border-bottom: 1px solid rgb(100 88 170 / 28%);
+  box-shadow:
+    0 9px 22px -7px rgb(48 34 96 / 38%),
+    inset 0 1px rgb(255 255 255 / 90%);
+}
+@supports (animation-timeline: scroll()) {
+  .header::before {
+    opacity: 0;
+    animation: surface 1s linear both;
+    animation-timeline: --addresses;
+    animation-range: 0px 72px;
+  }
+}
+@keyframes surface {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Reserve the same native scrollbar width without making the header scrollable. */
+.headerInner {
+  height: 100%;
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+.chrome {
+  height: 25px;
+  display: grid;
+  place-items: center;
+}
+.handle {
+  height: 4px;
+  width: 34px;
+  background: #ccc;
+  border-radius: 3px;
+}
+.headerRow {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+}
+.title {
+  margin: 0;
+  color: #30234d;
+  font-size: 16px;
+  letter-spacing: -0.3px;
+  font-weight: 700;
+}
+.headerRow button {
+  border: 0;
+  background: transparent;
+  color: #514075;
+  padding: 8px;
+  font-size: 14px;
+}
+.headerRow .back {
+  font-size: 24px;
+}
+.address {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 83px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+.pin {
+  height: 35px;
+  width: 35px;
+  flex: none;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  background: #e4eaff;
+  color: #5166c2;
+}
+.address:nth-child(3n + 2) .pin {
+  background: #fae0cc;
+  color: #b76832;
+}
+.address:nth-child(3n) .pin {
+  background: #e5d9f7;
+  color: #8c58b8;
+}
+.address strong {
+  font-size: 14px;
+  font-weight: 550;
+}
+.address small {
+  display: block;
+  color: #888;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.address input {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  accent-color: #222;
+}
+.footer {
+  position: fixed;
+  top: max(0px, calc(var(--visible-height) - var(--footer-height)));
+  left: 0;
+  right: 0;
+  height: var(--footer-height);
+  padding: 14px 20px 20px;
+  background: white;
+  border-top: 1px solid #eee;
+  transition: top 350ms cubic-bezier(0.22, 0.8, 0.2, 1);
+}
+.popup[data-swiping] .footer {
+  transition: none;
+}
+.footer button {
+  width: 100%;
+  background: #242424;
+  color: white;
+  border-color: #242424;
+  font-weight: 550;
+}
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .popup,
+  .content,
+  .footer,
+  .backdrop {
+    transition: none;
+  }
+}

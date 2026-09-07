@@ -1,0 +1,25 @@
+{
+  "name": "base-ui-drawer-fixed-header-repro",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "packageManager": "yarn@4.6.0",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.7.0",
+    "@base-ui/utils": "0.2.8",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.0",
+    "vite": "^8.0.0"
+  },
+  "resolutions": {
+    "@base-ui/react": "https://pkg.pr.new/mui/base-ui/@base-ui/react@5571",
+    "@base-ui/utils": "https://pkg.pr.new/mui/base-ui/@base-ui/utils@5571"
+  }
+}
