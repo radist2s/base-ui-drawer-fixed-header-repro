@@ -202,9 +202,18 @@ details ol {
   scrollbar-gutter: stable;
 }
 .chrome {
+  position: relative;
   height: 25px;
   display: grid;
   place-items: center;
+}
+.dragHint {
+  position: absolute;
+  inset-inline-start: calc(50% + 26px);
+  color: #77658e;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
 }
 .handle {
   height: 4px;
