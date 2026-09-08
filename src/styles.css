@@ -328,3 +328,12 @@ details ol {
     transition: none;
   }
 }
+
+.header {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.popup[data-swiping] .header {
+  cursor: grabbing;
+}

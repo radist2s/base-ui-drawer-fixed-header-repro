@@ -1,0 +1,264 @@
+diff --git a/drawer/viewport/DrawerViewport.js b/drawer/viewport/DrawerViewport.js
+--- a/drawer/viewport/DrawerViewport.js
++++ b/drawer/viewport/DrawerViewport.js
+@@ -668,7 +668,7 @@
+           return;
+         }
+         const elementAtPoint = (0, _getElementAtPoint.getElementAtPoint)(event.currentTarget.getRootNode(), event.clientX, event.clientY);
+-        if (isSwipeIgnoredTarget(elementAtPoint) || isDrawerContentTarget(elementAtPoint)) {
++        if (isSwipeIgnoredTarget(elementAtPoint) || isNonDraggableContentTarget(elementAtPoint)) {
+           return;
+         }
+         if (event.pointerType === 'touch') {
+@@ -725,8 +725,8 @@
+           return;
+         }
+         ignoreTouchSwipeRef.current = false;
+-        const scrollTarget = (0, _scrollable.findScrollableTouchTarget)(target, rootElement, scrollAxis);
+-        const hasCrossAxisScrollableContent = (0, _scrollable.findScrollableTouchTarget)(target, rootElement, crossScrollAxis) != null;
++        const scrollTarget = (0, _scrollable.findScrollableTouchTarget)(target, rootElement, scrollAxis, false, true);
++        const hasCrossAxisScrollableContent = (0, _scrollable.findScrollableTouchTarget)(target, rootElement, crossScrollAxis, false, true) != null;
+         let allowSwipe = null;
+         if (scrollTarget) {
+           const canSwipeFromEdge = isAtSwipeStartEdge(scrollTarget, scrollAxis, swipeDirection);
+@@ -772,8 +772,11 @@
+ function isSwipeIgnoredTarget(target) {
+   return Boolean(target?.closest(_constants.BASE_UI_SWIPE_IGNORE_SELECTOR));
+ }
+-function isDrawerContentTarget(target) {
+-  return Boolean(target?.closest(DRAWER_CONTENT_SELECTOR));
++function isNonDraggableContentTarget(target) {
++  const content = target?.closest(DRAWER_CONTENT_SELECTOR);
++  const dragArea = target?.closest('[data-base-ui-drag-area]');
++  // Only an explicit area inside this Content opts into pointer dragging.
++  return Boolean(content && (!dragArea || !(0, _utils.contains)(content, dragArea)));
+ }
+ function getBaseSwipeSize(element, direction) {
+   return direction === 'left' || direction === 'right' ? element.offsetWidth : element.offsetHeight;
+diff --git a/drawer/viewport/DrawerViewport.mjs b/drawer/viewport/DrawerViewport.mjs
+--- a/drawer/viewport/DrawerViewport.mjs
++++ b/drawer/viewport/DrawerViewport.mjs
+@@ -662,7 +662,7 @@
+           return;
+         }
+         const elementAtPoint = getElementAtPoint(event.currentTarget.getRootNode(), event.clientX, event.clientY);
+-        if (isSwipeIgnoredTarget(elementAtPoint) || isDrawerContentTarget(elementAtPoint)) {
++        if (isSwipeIgnoredTarget(elementAtPoint) || isNonDraggableContentTarget(elementAtPoint)) {
+           return;
+         }
+         if (event.pointerType === 'touch') {
+@@ -719,8 +719,8 @@
+           return;
+         }
+         ignoreTouchSwipeRef.current = false;
+-        const scrollTarget = findScrollableTouchTarget(target, rootElement, scrollAxis);
+-        const hasCrossAxisScrollableContent = findScrollableTouchTarget(target, rootElement, crossScrollAxis) != null;
++        const scrollTarget = findScrollableTouchTarget(target, rootElement, scrollAxis, false, true);
++        const hasCrossAxisScrollableContent = findScrollableTouchTarget(target, rootElement, crossScrollAxis, false, true) != null;
+         let allowSwipe = null;
+         if (scrollTarget) {
+           const canSwipeFromEdge = isAtSwipeStartEdge(scrollTarget, scrollAxis, swipeDirection);
+@@ -766,8 +766,11 @@
+ function isSwipeIgnoredTarget(target) {
+   return Boolean(target?.closest(BASE_UI_SWIPE_IGNORE_SELECTOR));
+ }
+-function isDrawerContentTarget(target) {
+-  return Boolean(target?.closest(DRAWER_CONTENT_SELECTOR));
++function isNonDraggableContentTarget(target) {
++  const content = target?.closest(DRAWER_CONTENT_SELECTOR);
++  const dragArea = target?.closest('[data-base-ui-drag-area]');
++  // Only an explicit area inside this Content opts into pointer dragging.
++  return Boolean(content && (!dragArea || !contains(content, dragArea)));
+ }
+ function getBaseSwipeSize(element, direction) {
+   return direction === 'left' || direction === 'right' ? element.offsetWidth : element.offsetHeight;
+diff --git a/utils/scrollable.js b/utils/scrollable.js
+--- a/utils/scrollable.js
++++ b/utils/scrollable.js
+@@ -33,7 +33,7 @@
+ function isScrollable(element, axis, allowOverflowIntent = false) {
+   return axis === 'vertical' ? isScrollableY(element, allowOverflowIntent) : isScrollableX(element, allowOverflowIntent);
+ }
+-function hasScrollableAncestor(target, root, axes) {
++function hasScrollableAncestor(target, root, axes, stopAtDragArea = false) {
+   // `getParentNode` crosses shadow boundaries (and slots), so a target inside a shadow root
+   // still walks up to scrollable ancestors in the light DOM.
+   let node = target;
+@@ -43,11 +43,15 @@
+         return true;
+       }
+     }
++    // An explicit drag area isolates the gesture from outer scroll containers.
++    if (stopAtDragArea && node.hasAttribute('data-base-ui-drag-area')) {
++      return false;
++    }
+     node = (0, _dom.getParentNode)(node);
+   }
+   return false;
+ }
+-function findScrollableTouchTarget(target, root, axis = 'vertical', allowOverflowIntent = false) {
++function findScrollableTouchTarget(target, root, axis = 'vertical', allowOverflowIntent = false, stopAtDragArea = false) {
+   // `getParentNode` crosses shadow boundaries (and slots), so a target inside a shadow root
+   // still reaches a scrollable ancestor in the light DOM.
+   let node = (0, _dom.isHTMLElement)(target) ? target : null;
+@@ -55,6 +59,10 @@
+     if (isScrollable(node, axis, allowOverflowIntent)) {
+       return node;
+     }
++    // Keep scrollable descendants active before stopping at the drag area.
++    if (stopAtDragArea && node.hasAttribute('data-base-ui-drag-area')) {
++      return null;
++    }
+     node = (0, _dom.getParentNode)(node);
+   }
+   return isScrollable(root, axis, allowOverflowIntent) ? root : null;
+diff --git a/utils/scrollable.mjs b/utils/scrollable.mjs
+--- a/utils/scrollable.mjs
++++ b/utils/scrollable.mjs
+@@ -23,7 +23,7 @@
+ export function isScrollable(element, axis, allowOverflowIntent = false) {
+   return axis === 'vertical' ? isScrollableY(element, allowOverflowIntent) : isScrollableX(element, allowOverflowIntent);
+ }
+-export function hasScrollableAncestor(target, root, axes) {
++export function hasScrollableAncestor(target, root, axes, stopAtDragArea = false) {
+   // `getParentNode` crosses shadow boundaries (and slots), so a target inside a shadow root
+   // still walks up to scrollable ancestors in the light DOM.
+   let node = target;
+@@ -33,11 +33,15 @@
+         return true;
+       }
+     }
++    // An explicit drag area isolates the gesture from outer scroll containers.
++    if (stopAtDragArea && node.hasAttribute('data-base-ui-drag-area')) {
++      return false;
++    }
+     node = getParentNode(node);
+   }
+   return false;
+ }
+-export function findScrollableTouchTarget(target, root, axis = 'vertical', allowOverflowIntent = false) {
++export function findScrollableTouchTarget(target, root, axis = 'vertical', allowOverflowIntent = false, stopAtDragArea = false) {
+   // `getParentNode` crosses shadow boundaries (and slots), so a target inside a shadow root
+   // still reaches a scrollable ancestor in the light DOM.
+   let node = isHTMLElement(target) ? target : null;
+@@ -45,6 +49,10 @@
+     if (isScrollable(node, axis, allowOverflowIntent)) {
+       return node;
+     }
++    // Keep scrollable descendants active before stopping at the drag area.
++    if (stopAtDragArea && node.hasAttribute('data-base-ui-drag-area')) {
++      return null;
++    }
+     node = getParentNode(node);
+   }
+   return isScrollable(root, axis, allowOverflowIntent) ? root : null;
+diff --git a/utils/scrollable.d.ts b/utils/scrollable.d.ts
+--- a/utils/scrollable.d.ts
++++ b/utils/scrollable.d.ts
+@@ -2,5 +2,5 @@
+ export declare function isScrollableY(element: HTMLElement, allowOverflowIntent?: boolean): boolean;
+ export declare function isScrollableX(element: HTMLElement, allowOverflowIntent?: boolean): boolean;
+ export declare function isScrollable(element: HTMLElement, axis: ScrollAxis, allowOverflowIntent?: boolean): boolean;
+-export declare function hasScrollableAncestor(target: HTMLElement, root: HTMLElement, axes: ScrollAxis[]): boolean;
+-export declare function findScrollableTouchTarget(target: EventTarget | null, root: HTMLElement, axis?: ScrollAxis, allowOverflowIntent?: boolean): HTMLElement | null;
+\ No newline at end of file
++export declare function hasScrollableAncestor(target: HTMLElement, root: HTMLElement, axes: ScrollAxis[], stopAtDragArea?: boolean): boolean;
++export declare function findScrollableTouchTarget(target: EventTarget | null, root: HTMLElement, axis?: ScrollAxis, allowOverflowIntent?: boolean, stopAtDragArea?: boolean): HTMLElement | null;
+\ No newline at end of file
+diff --git a/utils/scrollable.d.mts b/utils/scrollable.d.mts
+--- a/utils/scrollable.d.mts
++++ b/utils/scrollable.d.mts
+@@ -2,5 +2,5 @@
+ export declare function isScrollableY(element: HTMLElement, allowOverflowIntent?: boolean): boolean;
+ export declare function isScrollableX(element: HTMLElement, allowOverflowIntent?: boolean): boolean;
+ export declare function isScrollable(element: HTMLElement, axis: ScrollAxis, allowOverflowIntent?: boolean): boolean;
+-export declare function hasScrollableAncestor(target: HTMLElement, root: HTMLElement, axes: ScrollAxis[]): boolean;
+-export declare function findScrollableTouchTarget(target: EventTarget | null, root: HTMLElement, axis?: ScrollAxis, allowOverflowIntent?: boolean): HTMLElement | null;
+\ No newline at end of file
++export declare function hasScrollableAncestor(target: HTMLElement, root: HTMLElement, axes: ScrollAxis[], stopAtDragArea?: boolean): boolean;
++export declare function findScrollableTouchTarget(target: EventTarget | null, root: HTMLElement, axis?: ScrollAxis, allowOverflowIntent?: boolean, stopAtDragArea?: boolean): HTMLElement | null;
+\ No newline at end of file
+diff --git a/utils/useSwipeDismiss.js b/utils/useSwipeDismiss.js
+--- a/utils/useSwipeDismiss.js
++++ b/utils/useSwipeDismiss.js
+@@ -305,12 +305,12 @@
+   }
+   function findGestureScrollableTouchTarget(target, root) {
+     if (hasHorizontal && !hasVertical) {
+-      return (0, _scrollable.findScrollableTouchTarget)(target, root, 'horizontal');
++      return (0, _scrollable.findScrollableTouchTarget)(target, root, 'horizontal', false, ignoreScrollableAncestors);
+     }
+     if (hasVertical && !hasHorizontal) {
+-      return (0, _scrollable.findScrollableTouchTarget)(target, root, 'vertical');
+-    }
+-    return (0, _scrollable.findScrollableTouchTarget)(target, root, 'vertical') ?? (0, _scrollable.findScrollableTouchTarget)(target, root, 'horizontal');
++      return (0, _scrollable.findScrollableTouchTarget)(target, root, 'vertical', false, ignoreScrollableAncestors);
++    }
++    return (0, _scrollable.findScrollableTouchTarget)(target, root, 'vertical', false, ignoreScrollableAncestors) ?? (0, _scrollable.findScrollableTouchTarget)(target, root, 'horizontal', false, ignoreScrollableAncestors);
+   }
+   function startSwipeAtPosition(event, position, startOptions) {
+     swipeFromScrollableRef.current = false;
+@@ -331,7 +331,7 @@
+     const element = elementRef.current;
+     if (ignoreScrollableAncestors && element && target && scrollAxes.length > 0) {
+       const ignoreAncestors = startOptions?.ignoreScrollableAncestors ?? false;
+-      if (!ignoreAncestors && (0, _scrollable.hasScrollableAncestor)(target, element, scrollAxes)) {
++      if (!ignoreAncestors && (0, _scrollable.hasScrollableAncestor)(target, element, scrollAxes, ignoreScrollableAncestors)) {
+         return false;
+       }
+     }
+@@ -448,6 +448,12 @@
+     }
+     const startPos = getPrimaryPointerPosition(event);
+     if (!startPos) {
++      return;
++    }
++    const startTarget = getTargetAtPoint(startPos, event.nativeEvent);
++    // A mouse press on a control must not become a pending drag when it leaves the control.
++    if (ignoreScrollableAncestors && !isTouchLikeEvent(event) && startTarget?.closest('[data-base-ui-drag-area]') && startTarget.closest(ignoreSelector)) {
++      clearPendingSwipeStartState();
+       return;
+     }
+     pendingSwipeRef.current = true;
+diff --git a/utils/useSwipeDismiss.mjs b/utils/useSwipeDismiss.mjs
+--- a/utils/useSwipeDismiss.mjs
++++ b/utils/useSwipeDismiss.mjs
+@@ -298,12 +298,12 @@
+   }
+   function findGestureScrollableTouchTarget(target, root) {
+     if (hasHorizontal && !hasVertical) {
+-      return findScrollableTouchTarget(target, root, 'horizontal');
++      return findScrollableTouchTarget(target, root, 'horizontal', false, ignoreScrollableAncestors);
+     }
+     if (hasVertical && !hasHorizontal) {
+-      return findScrollableTouchTarget(target, root, 'vertical');
+-    }
+-    return findScrollableTouchTarget(target, root, 'vertical') ?? findScrollableTouchTarget(target, root, 'horizontal');
++      return findScrollableTouchTarget(target, root, 'vertical', false, ignoreScrollableAncestors);
++    }
++    return findScrollableTouchTarget(target, root, 'vertical', false, ignoreScrollableAncestors) ?? findScrollableTouchTarget(target, root, 'horizontal', false, ignoreScrollableAncestors);
+   }
+   function startSwipeAtPosition(event, position, startOptions) {
+     swipeFromScrollableRef.current = false;
+@@ -324,7 +324,7 @@
+     const element = elementRef.current;
+     if (ignoreScrollableAncestors && element && target && scrollAxes.length > 0) {
+       const ignoreAncestors = startOptions?.ignoreScrollableAncestors ?? false;
+-      if (!ignoreAncestors && hasScrollableAncestor(target, element, scrollAxes)) {
++      if (!ignoreAncestors && hasScrollableAncestor(target, element, scrollAxes, ignoreScrollableAncestors)) {
+         return false;
+       }
+     }
+@@ -441,6 +441,12 @@
+     }
+     const startPos = getPrimaryPointerPosition(event);
+     if (!startPos) {
++      return;
++    }
++    const startTarget = getTargetAtPoint(startPos, event.nativeEvent);
++    // A mouse press on a control must not become a pending drag when it leaves the control.
++    if (ignoreScrollableAncestors && !isTouchLikeEvent(event) && startTarget?.closest('[data-base-ui-drag-area]') && startTarget.closest(ignoreSelector)) {
++      clearPendingSwipeStartState();
+       return;
+     }
+     pendingSwipeRef.current = true;

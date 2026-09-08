@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const url = process.env.DEMO_URL ?? "http://localhost:63100";
+const url = process.env.DEMO_URL ?? "http://localhost:63102";
 const patched = process.env.EXPECT_PATCHED === "1";
 test.use({
   channel: "chrome",

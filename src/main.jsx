@@ -56,12 +56,12 @@ function App() {
   return (
     <main className="page">
       <section className="instructions">
-        <div className="eyebrow">Base UI · Fixed header gestures</div>
+        <div className="eyebrow">Base UI · Explicit drag area · PoC</div>
         <h1>Drag the whole header</h1>
         <p>
-          The handle, title and buttons share one fixed header inside the
-          scrolling content. Try a touch swipe on the header, then scroll the
-          address list.
+          Drag the handle, title or empty header space with a mouse or touch.
+          The list scrolls independently, and Back and Add remain ordinary
+          buttons.
         </p>
         <div className="toolbar">
           <button onClick={() => showAt(SNAP_POINTS[0])}>Compact</button>
@@ -104,7 +104,8 @@ function App() {
           <summary>How to compare / event log</summary>
           <ol>
             <li>
-              In Chrome DevTools, enable a mobile device with touch and reload.
+              Try dragging with your mouse first. Mobile touch emulation also
+              works.
             </li>
             <li>With the long list, swipe upward on the handle or title.</li>
             <li>
@@ -153,7 +154,7 @@ function App() {
                   setScrollTop(Math.round(event.currentTarget.scrollTop))
                 }
               >
-                <header className="header">
+                <header className="header" data-base-ui-drag-area="">
                   <div className="headerInner">
                     <div className="chrome">
                       <div className="handle" />

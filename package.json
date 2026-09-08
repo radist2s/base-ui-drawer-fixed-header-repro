@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test": "playwright test --workers=1"
+    "test": "EXPECT_PATCHED=1 playwright test --workers=1"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -21,7 +21,7 @@
     "vite": "^8.0.0"
   },
   "resolutions": {
-    "@base-ui/react": "https://pkg.pr.new/mui/base-ui/@base-ui/react@5571",
+    "@base-ui/react": "patch:@base-ui/react@https%3A//pkg.pr.new/mui/base-ui/@base-ui/react@5571#./.yarn/patches/drag-area.patch",
     "@base-ui/utils": "https://pkg.pr.new/mui/base-ui/@base-ui/utils@5571"
   }
 }
